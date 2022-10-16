@@ -1,0 +1,13 @@
+#!/usr/bin/gnuplot
+# http://www.bersch.net/gnuplot-doc/plot.html
+# http://www.gnuplot.info/docs_5.2/Gnuplot_5.2.pdf
+# This script from https://stackoverflow.com/questions/20356741/how-do-i-plot-a-histogram-of-response-times-from-an-apachebench-output-file-usin
+
+set terminal pngcairo
+set output 'loadHistogram.png'
+set datafile separator '\t'
+set style fill solid border
+set boxwidth 8 absolute
+set yrange [0:*]
+bin(x) = 10*floor(x/10.0)
+plot 'load.tsv' using (bin($5)):(1) every ::1 smooth frequency with boxes title 'ttime'

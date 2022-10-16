@@ -1,0 +1,24 @@
+<html>
+	<body>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+		<script >
+
+            function f() {
+                $.ajax({
+                type: "GET",
+                url: 'http://localhost:8080/a',
+                success: function(data, status, xhr) {
+                    console.log(xhr.getResponseHeader('Location'));
+                }
+            });
+            }
+
+        </script>
+        <h1>Long to Short</h1>
+        <form>
+        <input id="lts" name="lts" type="text"></input>
+        <Button type="submit">Convert</Button>
+		</form>
+        <h1>Short to Long</h1>
+	</body>
+</html>

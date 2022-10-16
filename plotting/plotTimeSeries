@@ -1,0 +1,34 @@
+#!/usr/bin/gnuplot
+# http://www.bersch.net/gnuplot-doc/plot.html
+# http://www.gnuplot.info/docs_5.2/Gnuplot_5.2.pdf
+# This script from https://stackoverflow.com/questions/20356741/how-do-i-plot-a-histogram-of-response-times-from-an-apachebench-output-file-usin
+
+# http://www.bradlanders.com/2013/04/15/apache-bench-and-gnuplot-youre-probably-doing-it-wrong/
+
+# Let's output to a jpeg file
+set terminal jpeg size 500,500
+# This sets the aspect ratio of the graph
+set size 1, 1
+# The file we'll write to
+set output "loadTimeSeries.jpg"
+# The graph title
+set title "Benchmark testing"
+# Where to place the legend/key
+set key left top
+# Draw gridlines oriented on the y axis
+set grid y
+# Specify that the x-series data is time data
+set xdata time
+# Specify the *input* format of the time data
+set timefmt "%s"
+# Specify the *output* format for the x-axis tick labels
+set format x "%S"
+# Label the x-axis
+set xlabel 'seconds'
+# Label the y-axis
+set ylabel "response time (ms)"
+# Tell gnuplot to use tabs as the delimiter instead of spaces (default)
+set datafile separator '\t'
+# Plot the data
+plot "load.tsv" every ::2 using 2:5 title 'response time' with points
+exit
