@@ -33,36 +33,48 @@ public class URLShortner {
 	static final File WEB_ROOT = new File(".");
 	static final String DEFAULT_FILE = "index.html";
 	static final String FILE_NOT_FOUND = "404.html";
-	static final String METHOD_NOT_SUPPORTED = "not_supported.html";
 	static final String REDIRECT_RECORDED = "redirect_recorded.html";
 	static final String REDIRECT = "redirect.html";
-	static final String NOT_FOUND = "notfound.html";
 	static final String DATABASE = "database.txt";
 	static final String SQLITE = "/virtual/dongshu4/URLShortner/urlMap.db";
 
 	// port to listen connection
-	static final int PORT = 8851;
-
+	static int PORT = 8080;
+	static final Map<String, Integer> fileLength = new HashMap<>();
+	static final Map<String, byte[]> fileContent = new HashMap<>();
 
 	static HashMap<String, String> entries = new HashMap<String, String>();
 
 	public static void main(String[] args) {
+		PORT = Integer.parseInt(args[0]);
 		loadMap();
 
 
 		try {
-			File file = new File(WEB_ROOT, FILE_NOT_FOUND);
-			int not_found_file_length = (int) file.length();
-			byte[] not_found_file_data = readFileData(file, not_found_file_length);
 
-			
+			File file = new File(WEB_ROOT, FILE_NOT_FOUND);
+			fileLength.put("FILE_NOT_FOUND", (int) file.length());
+			fileContent.put("FILE_NOT_FOUND", readFileData(file, (int) file.length()));
+			file = new File(WEB_ROOT, REDIRECT_RECORDED);
+			fileLength.put("REDIRECT_RECORDED", (int) file.length());
+			fileContent.put("REDIRECT_RECORDED", readFileData(file, (int) file.length()));
+			file = new File(WEB_ROOT, REDIRECT);
+			fileLength.put("REDIRECT", (int) file.length());
+			fileContent.put("REDIRECT", readFileData(file, (int) file.length()));
+			file = new File(WEB_ROOT, DEFAULT_FILE);
+			fileLength.put("DEFAULT_FILE", (int) file.length());
+			fileContent.put("DEFAULT_FILE", readFileData(file, (int) file.length()));
+
+
+
+
 			ServerSocket serverConnect = new ServerSocket(PORT);
 			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
 						
 			// we listen until user halts server execution
 			while (true) {
 				// handle(serverConnect.accept());
-				HTTPWorker clientSock = new HTTPWorker(serverConnect.accept(), entries, not_found_file_length, not_found_file_data);
+				HTTPWorker clientSock = new HTTPWorker(serverConnect.accept(), entries, fileLength, fileContent);
 				new Thread(clientSock).start();
 			}
 		} catch (IOException e) {
@@ -117,27 +129,23 @@ public class URLShortner {
 
 class HTTPWorker implements Runnable {
 	static final File WEB_ROOT = new File(".");
-	static final String DEFAULT_FILE = "index.html";
-	static final String FILE_NOT_FOUND = "404.html";
-	static final String METHOD_NOT_SUPPORTED = "not_supported.html";
-	static final String REDIRECT_RECORDED = "redirect_recorded.html";
-	static final String REDIRECT = "redirect.html";
-	static final String NOT_FOUND = "notfound.html";
 	static final String DATABASE = "database.txt";
 	static final String SQLITE = "/virtual/dongshu4/URLShortner/urlMap.db";
 
 	private final Socket connect;
 	private Map<String, String> entries;
 
+	Map<String, Integer> fileLength;
+	Map<String, byte[]> fileContent;
+
 
 	private byte[] not_found_file_data;
 	int not_found_file_length;
-	public HTTPWorker(Socket socket, Map<String, String> entries, int not_found_file_length, byte[] not_found_file_data) {
+	public HTTPWorker(Socket socket, Map<String, String> entries, Map<String, Integer> fileLength, Map<String, byte[]> fileContent) {
 		this.connect = socket;
 		this.entries = entries;
-		this.not_found_file_data = not_found_file_data;
-		this.not_found_file_length = not_found_file_length;
-
+		this.fileLength = fileLength;
+		this.fileContent = fileContent;
 	}
 
 
@@ -163,21 +171,17 @@ class HTTPWorker implements Runnable {
 				// saveDB(shortResource, longResource);
 				// save(shortResource, longResource);
 
-				File file = new File(WEB_ROOT, REDIRECT_RECORDED);
-				int fileLength = (int) file.length();
 				String contentMimeType = "text/html";
 				//read content to return to client
-				byte[] fileData = readFileData(file, fileLength);
-					
 				out.println("HTTP/1.1 200 OK");
 				out.println("Server: Java HTTP Server/Shortner : 1.0");
 				out.println("Date: " + new Date());
 				out.println("Content-type: " + contentMimeType);
-				out.println("Content-length: " + fileLength);
+				out.println("Content-length: " + this.fileLength.get("REDIRECT_RECORDED"));
 				out.println(); 
 				out.flush(); 
 
-				dataOut.write(fileData, 0, fileLength);
+				dataOut.write(this.fileContent.get("REDIRECT_RECORDED"), 0, this.fileLength.get("REDIRECT_RECORDED"));
 				dataOut.flush();
 			} else {
 				String decodedUrl = URLDecoder.decode(input, StandardCharsets.UTF_8.toString());
@@ -198,21 +202,20 @@ class HTTPWorker implements Runnable {
 
 					if(result!=null){
 						byte[] resultByte = result.getBytes();
-						int fileLength = (int) resultByte.length;
 						String content = "text/html";
 						out.println("HTTP/1.1 200");
 						out.println("Server: Java HTTP Server/Shortner : 1.0");
 						out.println("Date: " + new Date());
 						out.println("Content-type: " + content);
-						out.println("Content-length: " + fileLength);
+						out.println("Content-length: " + (int) resultByte.length);
 						out.println(); 
 						out.flush(); 
 
-						dataOut.write(resultByte, 0, fileLength);
+						dataOut.write(resultByte, 0, (int) resultByte.length);
 						dataOut.flush();
 					} else {
 						String content = "text/html";
-						out.println("HTTP/1.1 404 File Not Found");
+						out.println("HTTP/1.1 400 File Not Found");
 						out.println("Server: Java HTTP Server/Shortner : 1.0");
 						out.println("Date: " + new Date());
 						out.println("Content-type: " + content);
@@ -231,24 +234,20 @@ class HTTPWorker implements Runnable {
 						String longResource = entries.get(shortResource);
 
 						if(longResource!=null){
-							File file = new File(WEB_ROOT, REDIRECT);
-							int fileLength = (int) file.length();
 							String contentMimeType = "text/html";
 		
-							//read content to return to client
-							byte[] fileData = readFileData(file, fileLength);
-							
+							//read content to return to client							
 							// out.println("HTTP/1.1 301 Moved Permanently");
 							out.println("HTTP/1.1 307 Temporary Redirect");
 							out.println("Location: "+longResource);
 							out.println("Server: Java HTTP Server/Shortner : 1.0");
 							out.println("Date: " + new Date());
 							out.println("Content-type: " + contentMimeType);
-							out.println("Content-length: " + fileLength);
+							out.println("Content-length: " + this.fileLength.get("REDIRECT"));
 							out.println(); 
 							out.flush(); 
 		
-							dataOut.write(fileData, 0, fileLength);
+							dataOut.write(this.fileContent.get("REDIRECT"), 0, this.fileLength.get("REDIRECT"));
 							dataOut.flush();
 						} else {
 							// File file = new File(WEB_ROOT, FILE_NOT_FOUND);
@@ -261,31 +260,28 @@ class HTTPWorker implements Runnable {
 							out.println("Server: Java HTTP Server/Shortner : 1.0");
 							out.println("Date: " + new Date());
 							out.println("Content-type: " + content);
-							out.println("Content-length: " + not_found_file_length);
+							out.println("Content-length: " + this.fileLength.get("FILE_NOT_FOUND"));
 							out.println(); 
 							out.flush(); 
 							
-							dataOut.write(not_found_file_data, 0, not_found_file_length);
+							dataOut.write(this.fileContent.get("FILE_NOT_FOUND"), 0, this.fileLength.get("FILE_NOT_FOUND"));
 							dataOut.flush();
 						}
 					} else {
 						Pattern pfetch = Pattern.compile("^(\\S+)\\s+/(\\S*)\\s+(\\S+)$");
 						Matcher mfetch = pfetch.matcher(input);
 						if(mfetch.matches() && mfetch.group(2) == ""){
-							File file = new File(WEB_ROOT, DEFAULT_FILE);
-							int fileLength = (int) file.length();
 							String contentMimeType = "text/html";
-							byte[] fileData = readFileData(file, fileLength);
-								
+
 							out.println("HTTP/1.1 200 OK");
 							out.println("Server: Java HTTP Server/Shortner : 1.0");
 							out.println("Date: " + new Date());
 							out.println("Content-type: " + contentMimeType);
-							out.println("Content-length: " + fileLength);
+							out.println("Content-length: " + this.fileLength.get("DEFAULT_FILE"));
 							out.println(); 
 							out.flush(); 
 
-							dataOut.write(fileData, 0, fileLength);
+							dataOut.write(this.fileContent.get("DEFAULT_FILE"), 0, this.fileLength.get("DEFAULT_FILE"));
 							dataOut.flush();
 						} 
 					}
@@ -304,19 +300,19 @@ class HTTPWorker implements Runnable {
 		}
 	}
 
-	private static byte[] readFileData(File file, int fileLength) throws IOException {
-		FileInputStream fileIn = null;
-		byte[] fileData = new byte[fileLength];
+	// private static byte[] readFileData(File file, int fileLength) throws IOException {
+	// 	FileInputStream fileIn = null;
+	// 	byte[] fileData = new byte[fileLength];
 		
-		try {
-			fileIn = new FileInputStream(file);
-			fileIn.read(fileData);
-		} finally {
-			if (fileIn != null) 
-				fileIn.close();
-		}
+	// 	try {
+	// 		fileIn = new FileInputStream(file);
+	// 		fileIn.read(fileData);
+	// 	} finally {
+	// 		if (fileIn != null) 
+	// 			fileIn.close();
+	// 	}
 		
-		return fileData;
-	}
+	// 	return fileData;
+	// }
 
 }
