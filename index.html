@@ -1,3 +1,4 @@
+<!DOCTYPE html>”
 <html>
 	<body>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
@@ -33,12 +34,12 @@
 			});
 			$(document).on('submit', '.putForm', function(e) {
 				$.ajax({
-					url: $(this).attr('action'),
-					type: "GET",
+					url: '/?'+ $(this).serialize(),
+					type: "PUT",
 					data: $(this).serialize(),
 					// data: $('.putForm').serialize(),
 					success: function(html) {
-						$('#put_result').text($('.putForm').serialize());
+						$('#put_result').text("success");
 					},
 					error: function(res) {
 						$('#put_result').text(res.statusText);
@@ -46,6 +47,7 @@
 				});
 				e.preventDefault();
 			});
+
         </script>
 
 		<h1>Short to Long</h1>
