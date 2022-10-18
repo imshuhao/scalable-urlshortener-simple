@@ -7,11 +7,10 @@ File=config.properties
 Lines=$(cat $File)
 PORT=8848
 conteenue=0
+lineNum=1
 
 if [ $mode = "delete" ]; then
 	for Line in $Lines; do
-		# echo $HostNum
-		# echo $Line
 		if [[ $conteenue -eq 1 ]]; then
 			conteenue=0
 			continue
@@ -23,11 +22,14 @@ if [ $mode = "delete" ]; then
 			echo deleted $Line
 			echo deleted port$HostNum:$PORT
 		elif [[ $Line =~ ^hostname ]]; then
-			grep $Line $File | sed "s/hostname[0-9]+/hostname$HostNum/"
+			newHost=`echo $Line | sed "s/hostname[0-9]\+/hostname$HostNum/"`
+			sed -i "s/$Line/$newHost/" $File
 		elif [[ $Line =~ ^port ]]; then
-			grep $Line $File | sed "s/port[0-9]+/port$HostNum/"
+			newPort=`echo $Line | sed "s/port[0-9]\+/port$HostNum/"`
+			sed -i "s/$Line/$newPort/" $File
 			let HostNum++	
 		fi
+
 	done
 elif [ $mode = "add" ]; then
 	for Line in $Lines; do
