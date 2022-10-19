@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 public class SimpleProxyServer {
   static int i = 0;

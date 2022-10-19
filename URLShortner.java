@@ -28,13 +28,12 @@ import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.util.*;
 
-public class URLShortner { 
-	
+public class URLShortner {
 	static final File WEB_ROOT = new File(".");
-	static final String DEFAULT_FILE = "index.html";
-	static final String FILE_NOT_FOUND = "404.html";
-	static final String REDIRECT_RECORDED = "redirect_recorded.html";
-	static final String REDIRECT = "redirect.html";
+	static final String DEFAULT_FILE = "./applicationUI/index.html";
+	static final String FILE_NOT_FOUND = "./applicationUI/404.html";
+	static final String REDIRECT_RECORDED = "./applicationUI/redirect_recorded.html";
+	static final String REDIRECT = "./applicationUI/redirect.html";
 	static final String DATABASE = "database.txt";
 	static final String SQLITE = "/virtual/dongshu4/URLShortner/urlMap.db";
 
@@ -46,9 +45,8 @@ public class URLShortner {
 	static HashMap<String, String> entries = new HashMap<String, String>();
 
 	public static void main(String[] args) {
-		PORT = Integer.parseInt(args[0]);
+		// PORT = Integer.parseInt(args[0]);
 		loadMap();
-
 
 		try {
 
@@ -66,11 +64,9 @@ public class URLShortner {
 			fileContent.put("DEFAULT_FILE", readFileData(file, (int) file.length()));
 
 
-
-
 			ServerSocket serverConnect = new ServerSocket(PORT);
 			System.out.println("Server started.\nListening for connections on port : " + PORT + " ...\n");
-						
+
 			// we listen until user halts server execution
 			while (true) {
 				// handle(serverConnect.accept());
@@ -83,7 +79,7 @@ public class URLShortner {
 	}
 
 	public static void loadMap() {
-		Connection conn=null;
+		Connection conn = null;
 		try {
 			conn = DriverManager.getConnection("jdbc:sqlite:" + SQLITE);
 			String sql = "SELECT short, long FROM urlMap";
@@ -93,7 +89,6 @@ public class URLShortner {
 			while(rs.next()) {
 				entries.put(rs.getString("short"), rs.getString("long"));
 			}
-
 		} catch (SQLException e) {
 			System.out.println(e.getMessage());
 		} finally {
@@ -148,7 +143,9 @@ class HTTPWorker implements Runnable {
 		this.fileContent = fileContent;
 	}
 
-
+	synchronized private void mapPut(String shortResource, String longResource) {
+		entries.put(shortResource, longResource);
+	}
 
 	public void run() {
 		BufferedReader in = null; PrintWriter out = null; BufferedOutputStream dataOut = null;
@@ -159,6 +156,8 @@ class HTTPWorker implements Runnable {
 			dataOut = new BufferedOutputStream(connect.getOutputStream());
 			
 			String input = in.readLine();
+			
+			System.out.println(input);
 
 			Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
 			Matcher mput = pput.matcher(input);
@@ -166,10 +165,9 @@ class HTTPWorker implements Runnable {
 				String shortResource=mput.group(1);
 				String longResource=mput.group(2);
 				String httpVersion=mput.group(3);
-				entries.put(shortResource, longResource);
-
-				// saveDB(shortResource, longResource);
-				// save(shortResource, longResource);
+				String decodedUrl = URLDecoder.decode(longResource, StandardCharsets.UTF_8.toString());
+				mapPut(shortResource, decodedUrl);
+				// entries.put(shortResource, decodedUrl);
 
 				String contentMimeType = "text/html";
 				//read content to return to client
@@ -184,111 +182,72 @@ class HTTPWorker implements Runnable {
 				dataOut.write(this.fileContent.get("REDIRECT_RECORDED"), 0, this.fileLength.get("REDIRECT_RECORDED"));
 				dataOut.flush();
 			} else {
-				String decodedUrl = URLDecoder.decode(input, StandardCharsets.UTF_8.toString());
-				Pattern pconvert= Pattern.compile("^GET\\s+/\\?(\\S+)=(\\S+)\\s+(\\S+)$");
-				Matcher mconvert = pconvert.matcher(decodedUrl);
-				if(mconvert.matches()) {
-					String mode=mconvert.group(1);
-					String data=mconvert.group(2);
-					String httpVersion=mconvert.group(3);
-					String result=null;
-					if(mode.equals("stl")) {
-						result = entries.get(data);
-						// result=findDB(data);
-					} else if (mode.equals("lts")) {
-						// result=findDBShort(data);
-						//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-					}
+				Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)\\s+(\\S+)$");
+				Matcher mget = pget.matcher(input);
+				if(mget.matches()){
+					String method=mget.group(1);
+					String shortResource=mget.group(2);
+					String httpVersion=mget.group(3);
 
-					if(result!=null){
-						byte[] resultByte = result.getBytes();
-						String content = "text/html";
-						out.println("HTTP/1.1 200");
+					String longResource = entries.get(shortResource);
+					System.out.println("Long Res: " + longResource);
+
+					if(longResource!=null){
+						String contentMimeType = "text/html";
+	
+						//read content to return to client							
+						// out.println("HTTP/1.1 301 Moved Permanently");
+						out.println("HTTP/1.1 307 Temporary Redirect");
+						out.println("Location: " + longResource);
 						out.println("Server: Java HTTP Server/Shortner : 1.0");
 						out.println("Date: " + new Date());
-						out.println("Content-type: " + content);
-						out.println("Content-length: " + (int) resultByte.length);
-						out.println(); 
-						out.flush(); 
-
-						dataOut.write(resultByte, 0, (int) resultByte.length);
+						out.println("Content-type: " + contentMimeType);
+						out.println("Content-length: " + this.fileLength.get("REDIRECT"));
+						out.println();
+						out.flush();
+	
+						dataOut.write(this.fileContent.get("REDIRECT"), 0, this.fileLength.get("REDIRECT"));
 						dataOut.flush();
 					} else {
+						// File file = new File(WEB_ROOT, FILE_NOT_FOUND);
+						// int fileLength = (int) file.length();
 						String content = "text/html";
-						out.println("HTTP/1.1 400 File Not Found");
+						// byte[] fileData = readFileData(file, fileLength);
+						
+						
+						out.println("HTTP/1.1 404 File Not Found");
 						out.println("Server: Java HTTP Server/Shortner : 1.0");
 						out.println("Date: " + new Date());
 						out.println("Content-type: " + content);
-						out.println("Content-length: " + 0);
+						out.println("Content-length: " + this.fileLength.get("FILE_NOT_FOUND"));
 						out.println(); 
 						out.flush(); 
+						
+						dataOut.write(this.fileContent.get("FILE_NOT_FOUND"), 0, this.fileLength.get("FILE_NOT_FOUND"));
+						dataOut.flush();
 					}
 				} else {
-					Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)\\s+(\\S+)$");
-					Matcher mget = pget.matcher(input);
-					if(mget.matches()){
-						String method=mget.group(1);
-						String shortResource=mget.group(2);
-						String httpVersion=mget.group(3);
+					Pattern pfetch = Pattern.compile("^(\\S+)\\s+/(\\S*)\\s+(\\S+)$");
+					Matcher mfetch = pfetch.matcher(input);
+					if(mfetch.matches() && mfetch.group(2) == ""){
+						String contentMimeType = "text/html";
 
-						String longResource = entries.get(shortResource);
+						out.println("HTTP/1.1 200 OK");
+						out.println("Server: Java HTTP Server/Shortner : 1.0");
+						out.println("Date: " + new Date());
+						out.println("Content-type: " + contentMimeType);
+						out.println("Content-length: " + this.fileLength.get("DEFAULT_FILE"));
+						out.println(); 
+						out.flush(); 
 
-						if(longResource!=null){
-							String contentMimeType = "text/html";
-		
-							//read content to return to client							
-							// out.println("HTTP/1.1 301 Moved Permanently");
-							out.println("HTTP/1.1 307 Temporary Redirect");
-							out.println("Location: "+longResource);
-							out.println("Server: Java HTTP Server/Shortner : 1.0");
-							out.println("Date: " + new Date());
-							out.println("Content-type: " + contentMimeType);
-							out.println("Content-length: " + this.fileLength.get("REDIRECT"));
-							out.println(); 
-							out.flush(); 
-		
-							dataOut.write(this.fileContent.get("REDIRECT"), 0, this.fileLength.get("REDIRECT"));
-							dataOut.flush();
-						} else {
-							// File file = new File(WEB_ROOT, FILE_NOT_FOUND);
-							// int fileLength = (int) file.length();
-							String content = "text/html";
-							// byte[] fileData = readFileData(file, fileLength);
-							
-							
-							out.println("HTTP/1.1 404 File Not Found");
-							out.println("Server: Java HTTP Server/Shortner : 1.0");
-							out.println("Date: " + new Date());
-							out.println("Content-type: " + content);
-							out.println("Content-length: " + this.fileLength.get("FILE_NOT_FOUND"));
-							out.println(); 
-							out.flush(); 
-							
-							dataOut.write(this.fileContent.get("FILE_NOT_FOUND"), 0, this.fileLength.get("FILE_NOT_FOUND"));
-							dataOut.flush();
-						}
-					} else {
-						Pattern pfetch = Pattern.compile("^(\\S+)\\s+/(\\S*)\\s+(\\S+)$");
-						Matcher mfetch = pfetch.matcher(input);
-						if(mfetch.matches() && mfetch.group(2) == ""){
-							String contentMimeType = "text/html";
-
-							out.println("HTTP/1.1 200 OK");
-							out.println("Server: Java HTTP Server/Shortner : 1.0");
-							out.println("Date: " + new Date());
-							out.println("Content-type: " + contentMimeType);
-							out.println("Content-length: " + this.fileLength.get("DEFAULT_FILE"));
-							out.println(); 
-							out.flush(); 
-
-							dataOut.write(this.fileContent.get("DEFAULT_FILE"), 0, this.fileLength.get("DEFAULT_FILE"));
-							dataOut.flush();
-						} 
-					}
+						dataOut.write(this.fileContent.get("DEFAULT_FILE"), 0, this.fileLength.get("DEFAULT_FILE"));
+						dataOut.flush();
+					} 
 				}
 			}
 		} catch (Exception e) {
 			System.err.println("Server error");
+			System.err.println(e);
 		} finally {
 			try {
 				in.close();

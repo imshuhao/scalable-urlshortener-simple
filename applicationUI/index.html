@@ -1,24 +1,79 @@
+<!DOCTYPE html>
 <html>
 	<body>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
 		<script >
-
-            function f() {
-                $.ajax({
-                type: "GET",
-                url: 'http://localhost:8080/a',
-                success: function(data, status, xhr) {
-                    console.log(xhr.getResponseHeader('Location'));
-                }
-            });
-            }
+			$(document).on('submit', '.getForm', function(e) {
+				// $.ajax({
+				// 	url: $("#shortval").val(),
+				// 	type: "GET",
+				// 	success: function(html) {
+				// 		console.log(html);
+				// 		$('#get_result').text(html);
+				// 	}, 
+				// 	error: function(res) {
+				// 		$('#get_result').text(res.statusText);
+				// 	},
+				// });
+				let short = $("#shortval").val();
+				window.location.href = short;
+				e.preventDefault();
+			});
+			// $(document).on('submit', '.ltsForm', function(e) {
+			// 	$.ajax({
+			// 		url: $(this).attr('action'),
+			// 		type: $(this).attr('method'),
+			// 		data: $(this).serialize(),
+			// 		success: function(html) {
+			// 			$('#lts_result').text(html);
+			// 		},
+			// 		error: function(res) {
+			// 			$('#lts_result').text(res.statusText);
+			// 		}, 
+			// 	});
+			// 	e.preventDefault();
+			// });
+			$(document).on('submit', '.putForm', function(e) {
+				$.ajax({
+					url: '/?'+ $(this).serialize(),
+					type: "PUT",
+					data: $(this).serialize(),
+					// data: $('.putForm').serialize(),
+					success: function(html) {
+						$('#put_result').text("success");
+					},
+					error: function(res) {
+						$('#put_result').text(res.statusText);
+					}, 
+				});
+				e.preventDefault();
+			});
 
         </script>
-        <h1>Long to Short</h1>
-        <form>
-        <input id="lts" name="lts" type="text"></input>
-        <Button type="submit">Convert</Button>
+
+		<h1>Redirect Me</h1>
+        <form class="getForm">
+			<input id="shortval" name="shortval" type="text" size="30"></input>
+			<Button type="submit">Jump</Button>
 		</form>
-        <h1>Short to Long</h1>
+		<!-- <textarea id="get_result" rows="4" cols="80" readonly></textarea> -->
+<!-- 
+		<h1>Long to Short</h1>
+		<form class="ltsForm">
+			<input id="lts" name="lts" type="text" size="100"></input>
+			<Button type="submit">Convert</Button>
+		</form>
+		<textarea id="lts_result" rows="4" cols="80" readonly></textarea> -->
+
+		<h1>PUT</h1>
+		<form class="putForm">
+			<label for="short">Short</label>
+			<input id="short" name="short" type="text" size="50" style="margin-bottom: 10px"></input>
+			<br><label for="long">Long</label>
+			<input id="long" name="long" type="text" size="100"></input>
+
+			<Button type="submit">Put</Button>
+		</form>
+		<textarea id="put_result" rows="4" cols="80" readonly></textarea>
 	</body>
 </html>

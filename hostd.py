@@ -20,8 +20,6 @@ for i in range(100000000000):
     if host is None or port is None:
         break
     hosts.append((host, port))
-    
-    
 
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
@@ -54,7 +52,7 @@ def monitor():
             print(statusString)
 
 def revive():
-    os.system("./run.bash")
+    os.system("pkill java && ./run.bash")
 
 while True:
     monitor()
