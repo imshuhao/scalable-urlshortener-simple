@@ -13,7 +13,7 @@ public class SimpleProxyServer {
   public static void main(String[] args) throws IOException {
     Properties prop = new Properties();
     String configFile = "config.properties";
-    MessageDigest md = MessageDigest.getInstance("MD5");
+    // MessageDigest md = MessageDigest.getInstance("MD5");
     
     try (FileInputStream fis = new FileInputStream(configFile)) {
         prop.load(fis);
