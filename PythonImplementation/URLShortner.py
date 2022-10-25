@@ -10,17 +10,17 @@ running = True
 
 
 
-udp_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-udp_server.settimeout(0.2)
+# udp_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+# udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+# udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# udp_server.settimeout(0.2)
 
 
-udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
-udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-udp_client.settimeout(0.2)
-udp_client.bind(("", 37021))
+# udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
+# udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+# udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# udp_client.settimeout(0.2)
+# udp_client.bind(("", 37021))
 
 
 def save():
@@ -38,7 +38,19 @@ def save():
         con.close()
         print("saved, sleeping...")
 
-# def sync():
+def sync():
+    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host = socket.gethostname()
+    port = 9999
+    serversocket.bind((host, port))
+    serversocket.listen(5)
+    while True:
+        clientsocket, addr = serversocket.accept()
+        print("connection addr: %s" % str(addr))
+        msg='hi'+ "\r\n"
+        clientsocket.send(msg.encode('utf-8'))
+        clientsocket.close()
+
 #     while running:
 #         time.sleep(10)
 #         udp_server.sendto(json.dumps(urlMap).encode("UTF-8"), ('<broadcast>', 37021))
