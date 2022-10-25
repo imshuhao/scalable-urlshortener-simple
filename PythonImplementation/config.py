@@ -1,3 +1,3 @@
-hostName = "localhost"
-serverPort = 8090
+hostName = "0.0.0.0"
+serverPort = 8848
 dbPath = "urlMap.db"

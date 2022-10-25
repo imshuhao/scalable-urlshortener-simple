@@ -1,20 +1,36 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class SimpleProxyServer {
-  static int i = 0;
+  // static int i = 0;
   // String[] hosts = {"dh2020pc18:8080", "localhost"};
   static List<String> hosts = new ArrayList<>();
   static List<Integer> ports = new ArrayList<>();
+  static Integer localport=null;
 
   public static void main(String[] args) throws IOException {
+    loadProp();
+    try {
+      // Print a start-up message
+      System.out.println("Starting proxy on port " + localport + " for " + hosts.size() + " hosts"
+          + " on " + ports.size() +  " ports.");  
+      // And start running the server
+      runServer(hosts, ports, localport); // never returns
+    } catch (Exception e) {
+      System.err.println(e);
+    }
+  }
+
+  private static void loadProp() {
     Properties prop = new Properties();
     String configFile = "config.properties";
-    // MessageDigest md = MessageDigest.getInstance("MD5");
-    
     try (FileInputStream fis = new FileInputStream(configFile)) {
         prop.load(fis);
     } catch (FileNotFoundException ex) {
@@ -22,10 +38,12 @@ public class SimpleProxyServer {
     } catch (IOException ex) {
       System.exit(1);
     }
+    
+    localport = Integer.parseInt(prop.getProperty("proxyPort"));
 
-    for (int i = 0; ; ++i) {
-        String hostname = prop.getProperty("hostname" + i);
-        String port = prop.getProperty("port" + i);
+    for (int k = 0; ; ++k) {
+        String hostname = prop.getProperty("hostname" + k);
+        String port = prop.getProperty("port" + k);
         if (hostname == null || port == null) {
           break;
         }
@@ -33,16 +51,42 @@ public class SimpleProxyServer {
         ports.add(Integer.parseInt(port));
     }
     System.out.println(hosts);
+  }
+
+  private static Integer hashRequest(InputStream streamFromClient) {
+    String shortResource="arnold"; Integer hashed = null;
+    final byte[] request = new byte[1024];
     try {
-      int localport = Integer.parseInt(prop.getProperty("proxyPort"));
-      // Print a start-up message
-      System.out.println("Starting proxy for " + hosts.size() + " hosts"
-          + " on " + ports.size() +  " ports.");
-      // And start running the server
-      runServer(hosts, ports, localport); // never returns
-    } catch (Exception e) {
+      BufferedReader in = new BufferedReader(new InputStreamReader(streamFromClient));
+      String input = in.readLine();
+      int bytesRead = streamFromClient.read(request);
+
+      // System.out.println(input);
+      Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
+			Matcher mput = pput.matcher(input);
+			if(mput.matches()){
+				shortResource=mput.group(1);
+        System.out.println(shortResource);
+
+      } else {
+        Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)\\s+(\\S+)$");
+				Matcher mget = pget.matcher(input);
+				if(mget.matches()){
+					String method=mget.group(1);
+					shortResource=mget.group(2);
+         System.out.println(shortResource);
+        }
+      }
+
+      MessageDigest md = MessageDigest.getInstance("MD5");
+      byte[] dg = md.digest(shortResource.getBytes());
+      hashed = ByteBuffer.wrap(dg).getInt();
+    } catch (IOException e) {
+      System.err.println(e);
+    } catch (NoSuchAlgorithmException e) {
       System.err.println(e);
     }
+    return hashed;
   }
 
   /**
@@ -60,19 +104,23 @@ public class SimpleProxyServer {
     while (true) {
       Socket client = null, server = null;
       try {
-        // Wait for a connection on the local port
         client = ss.accept();
 
         final InputStream streamFromClient = client.getInputStream();
         final OutputStream streamToClient = client.getOutputStream();
-        // Make a connection to the real server.
-        // If we cannot connect to the server, send an error to the
-        // client, disconnect, and continue waiting for connections.
-        i = (int)(Math.random() * hosts.size());
+
+        Integer hashed=hashRequest(streamFromClient);
+        int i=0;
+        // Integer hashed=3;
+
+        if(hashed != null) {
+          i = (int)(hashed % hosts.size());
+        } else {
+          System.err.println("Unhashed request.");
+        }
         String host = hosts.get(i);
-        Integer port = ports.get(i++);
-        System.out.println("redirecting to" + host + ":" + port);
-      
+        Integer port = ports.get(i);
+        System.out.println("redirecting to " + host + ":" + port);
 
         try {
           server = new Socket(host, port);
