@@ -4,35 +4,10 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
 		<script >
 			$(document).on('submit', '.getForm', function(e) {
-				// $.ajax({
-				// 	url: $("#shortval").val(),
-				// 	type: "GET",
-				// 	success: function(html) {
-				// 		console.log(html);
-				// 		$('#get_result').text(html);
-				// 	}, 
-				// 	error: function(res) {
-				// 		$('#get_result').text(res.statusText);
-				// 	},
-				// });
 				let short = $("#shortval").val();
 				window.location.href = short;
 				e.preventDefault();
 			});
-			// $(document).on('submit', '.ltsForm', function(e) {
-			// 	$.ajax({
-			// 		url: $(this).attr('action'),
-			// 		type: $(this).attr('method'),
-			// 		data: $(this).serialize(),
-			// 		success: function(html) {
-			// 			$('#lts_result').text(html);
-			// 		},
-			// 		error: function(res) {
-			// 			$('#lts_result').text(res.statusText);
-			// 		}, 
-			// 	});
-			// 	e.preventDefault();
-			// });
 			$(document).on('submit', '.putForm', function(e) {
 				$.ajax({
 					url: '/?'+ $(this).serialize(),
@@ -48,7 +23,6 @@
 				});
 				e.preventDefault();
 			});
-
         </script>
 
 		<h1>Redirect Me</h1>
@@ -56,14 +30,6 @@
 			<input id="shortval" name="shortval" type="text" size="30"></input>
 			<Button type="submit">Jump</Button>
 		</form>
-		<!-- <textarea id="get_result" rows="4" cols="80" readonly></textarea> -->
-<!-- 
-		<h1>Long to Short</h1>
-		<form class="ltsForm">
-			<input id="lts" name="lts" type="text" size="100"></input>
-			<Button type="submit">Convert</Button>
-		</form>
-		<textarea id="lts_result" rows="4" cols="80" readonly></textarea> -->
 
 		<h1>PUT</h1>
 		<form class="putForm">
