@@ -1,12 +1,26 @@
 #!/usr/bin/python3
 
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
-import threading, time, sqlite3, urllib.parse
+import threading, socket, time, sqlite3, urllib.parse, json
 from config import *
 
 lock = threading.Lock()
 urlMap = {}
 running = True
+
+
+
+udp_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+udp_server.settimeout(0.2)
+
+
+udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
+udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+udp_client.settimeout(0.2)
+udp_client.bind(("", 37021))
 
 
 def save():
@@ -24,8 +38,12 @@ def save():
         con.close()
         print("saved, sleeping...")
 
-def sync():
-    pass
+# def sync():
+#     while running:
+#         time.sleep(10)
+#         udp_server.sendto(json.dumps(urlMap).encode("UTF-8"), ('<broadcast>', 37021))
+#         raw_data = udp_client.recvfrom(1024)
+#         print(raw_data)
 
 
 
@@ -111,7 +129,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    x = threading.Thread(target=save)
-    x.start()
+    saveT = threading.Thread(target=save)
+    saveT.start()
+    # syncT = threading.Thread(target=sync)
+    # syncT.start()
     app = URLShortner(hostName, serverPort, dbPath)
     app.serve()
