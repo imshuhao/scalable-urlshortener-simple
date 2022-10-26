@@ -11,4 +11,4 @@ if ! [[ -f "$FILE" ]]; then
 fi
 
 pkill python
-python URLShortner.py
+python3 ./PythonImplementation/URLShortner.py

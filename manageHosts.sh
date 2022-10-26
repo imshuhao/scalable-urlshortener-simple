@@ -16,6 +16,7 @@ if [ $mode = "delete" ]; then
 			continue
 		fi
 		if [[ $Line =~ $host ]]; then
+			ssh $host "pkill python3" &
 			sed -i "/hostname$HostNum:$host/d" $File
 			sed -i "/port$HostNum:$PORT/d" $File
 			conteenue=1		# we already deleted the next line, skip the next for loop 

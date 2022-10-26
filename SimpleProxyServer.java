@@ -54,14 +54,11 @@ public class SimpleProxyServer {
   }
 
   private static Integer hashRequest(InputStream streamFromClient) {
-    String shortResource="arnold"; Integer hashed = null;
-    final byte[] request = new byte[1024];
+    String shortResource="arnold"; Integer hashed = null; boolean hb = false;
     try {
       BufferedReader in = new BufferedReader(new InputStreamReader(streamFromClient));
       String input = in.readLine();
-      int bytesRead = streamFromClient.read(request);
 
-      // System.out.println(input);
       Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
 			Matcher mput = pput.matcher(input);
 			if(mput.matches()){
@@ -74,19 +71,22 @@ public class SimpleProxyServer {
 				if(mget.matches()){
 					String method=mget.group(1);
 					shortResource=mget.group(2);
-         System.out.println(shortResource);
+          if(shortResource.equals("hb")) {
+            hb = true;
+          }
         }
       }
 
       MessageDigest md = MessageDigest.getInstance("MD5");
       byte[] dg = md.digest(shortResource.getBytes());
-      hashed = ByteBuffer.wrap(dg).getInt();
+      hashed = Byte.toUnsignedInt(dg[0]);
+      hashed = 0;
     } catch (IOException e) {
       System.err.println(e);
     } catch (NoSuchAlgorithmException e) {
       System.err.println(e);
     }
-    return hashed;
+    return hb ? -1 : hashed;
   }
 
   /**
@@ -111,9 +111,16 @@ public class SimpleProxyServer {
 
         Integer hashed=hashRequest(streamFromClient);
         int i=0;
-        // Integer hashed=3;
 
-        if(hashed != null) {
+        if (hashed == -1) {
+          out.println("HTTP/1.1 200 OK");
+          out.println("Server: Java HTTP Server/Shortner : 1.0");
+          out.println("Date: " + new Date());
+          out.println(); 
+          out.flush();
+          client.close();
+          continue;
+        } else if (hashed != null) {
           i = (int)(hashed % hosts.size());
         } else {
           System.err.println("Unhashed request.");
@@ -125,7 +132,6 @@ public class SimpleProxyServer {
         try {
           server = new Socket(host, port);
         } catch (IOException e) {
-          PrintWriter out = new PrintWriter(streamToClient);
           out.print("Proxy server cannot connect to " + host + ":"+ port + ":\n" + 
           e + "\n");
           out.flush();
