@@ -1,86 +1,91 @@
 #!/usr/bin/python3
 
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
-import threading, socket, time, sqlite3, urllib.parse, json
+import threading, socket, time, sqlite3, urllib.parse, json, random, os
 from config import *
+import sys
 
 lock = threading.Lock()
 urlMap = {}
 running = True
 
 
-
-# udp_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-# udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-# udp_server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-# udp_server.settimeout(0.2)
-
-
-# udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
-# udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-# udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-# udp_client.settimeout(0.2)
-# udp_client.bind(("", 37021))
-
-
 def save():
     while running:
-        time.sleep(10)
-        lock.acquire()
-        # print("lock acquired")
-        items = list(urlMap.items())
-        lock.release()
-        # print("lock released")
-        con = sqlite3.connect(dbPath)
-        cur = con.cursor()
-        cur.executemany("INSERT OR IGNORE INTO urlMap(short, long) VALUES(?, ?)", items)
-        con.commit()
-        con.close()
-        print("saved, sleeping...")
+        sleepTime = random.randint(10, 20)
+        print(f"[save] Sleeping for {sleepTime} seconds...")
+        time.sleep(sleepTime)
+        try:
+            lock.acquire()
+            items = list(urlMap.items())
+            lock.release()
+            con = sqlite3.connect(dbPath)
+            cur = con.cursor()
+            con.execute('''create table if not exists urlMap (short varchar(50) primary key, long varchar(150) not null);''')
+            cur.executemany("INSERT OR IGNORE INTO urlMap(short, long) VALUES(?, ?)", items)
+            con.commit()
+            con.close()
+            print("[save] saved, sleeping...")
+        except:
+            removeDatabaseFile()
 
 def sync():
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = socket.gethostname()
-    port = 9999
-    serversocket.bind((host, port))
-    serversocket.listen(5)
-    while True:
-        clientsocket, addr = serversocket.accept()
-        print("connection addr: %s" % str(addr))
-        msg='hi'+ "\r\n"
-        clientsocket.send(msg.encode('utf-8'))
-        clientsocket.close()
-
-#     while running:
-#         time.sleep(10)
-#         udp_server.sendto(json.dumps(urlMap).encode("UTF-8"), ('<broadcast>', 37021))
-#         raw_data = udp_client.recvfrom(1024)
-#         print(raw_data)
-
+    global urlMap
+    while running:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((dbCentralHostname, tcpPort))
+                # s.sendall(b"Hello, world")
+                res = b""
+                while running:
+                    data = s.recv(1024000000)
+                    if not data:
+                        break
+                    res += data
+                    print(f"[sync] Received {sys.getsizeof(data)} bytes.")
+                entries = json.loads(res.decode('UTF-8'))
+                res = b""
+                lock.acquire()
+                urlMap.clear()
+                urlMap.update(entries)
+                lock.release()
+                print("[sync] urlMap updated!")
+        except KeyboardInterrupt:
+            # lock.release()
+            exit(1)
+        except Exception as e:
+            # lock.release()
+            print(e)
+        sleepTime = random.randint(30, 50)
+        print(f"[sync] Sleeping for {sleepTime} seconds...")
+        time.sleep(sleepTime)
 
 
 class URLShortner:
-    def __init__(self, hostname, port, dbPath):
+    def __init__(self, port, dbPath):
         global urlMap
-        self.hostname = hostname
+        self.hostname = "0.0.0.0"
         self.port = port
-        con = sqlite3.connect(dbPath)
-        cur = con.cursor()
-        res = cur.execute("SELECT short, long FROM urlMap")
-        for shortR, longR in res.fetchall():
-            urlMap[shortR] = longR
-        con.close()
+        try:
+            con = sqlite3.connect(dbPath)
+            cur = con.cursor()
+            res = cur.execute("SELECT short, long FROM urlMap")
+            for shortR, longR in res.fetchall():
+                urlMap[shortR] = longR
+            con.close()
+        except:
+            removeDatabaseFile()
     
     def serve(self):
         server = ThreadingHTTPServer((self.hostname, self.port), Handler)
-        print("Server started http://%s:%s" % (self.hostname, self.port))
+        print("[URLShotner] Server started http://%s:%s" % (self.hostname, self.port))
         try:
             server.serve_forever()
         except KeyboardInterrupt:
             pass
         
         server.server_close()
-        print("Server stopped.")
+        print("[URLShotner] Server stopped.")
         global running
         running = False
         #self.save()
@@ -99,8 +104,6 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(str.encode(html))
                 return
         longURL = urlMap.get(shortURL)
-        # print(f"Short: {shortURL}, Long: {longURL}")
-        
         if longURL:
             self.send_response(307)
             self.send_header("Content-type", "text/html")
@@ -122,7 +125,6 @@ class Handler(BaseHTTPRequestHandler):
         data = path.strip().split("&")
         shortURL = data[0].split("=")[1]
         longURL = data[1].split("=")[1]
-        # print(shortURL, longURL)
         if shortURL and longURL:
             lock.acquire()
             urlMap[shortURL] = longURL
@@ -143,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     saveT = threading.Thread(target=save)
     saveT.start()
-    # syncT = threading.Thread(target=sync)
-    # syncT.start()
-    app = URLShortner(hostName, serverPort, dbPath)
+    syncT = threading.Thread(target=sync)
+    syncT.start()
+    app = URLShortner(serverPort, dbPath)
     app.serve()
