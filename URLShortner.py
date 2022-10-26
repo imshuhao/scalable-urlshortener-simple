@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
-import threading, socket, time, sqlite3, urllib.parse, json, random, os
+import threading, socket, time, sqlite3, urllib.parse, json, random, os, sys
 from config import *
-import sys
 
 lock = threading.Lock()
 urlMap = {}
@@ -25,7 +24,7 @@ def save():
             cur.executemany("INSERT OR IGNORE INTO urlMap(short, long) VALUES(?, ?)", items)
             con.commit()
             con.close()
-            print("[save] saved, sleeping...")
+            print("[save] Saved to database (urlMap.db).")
         except:
             removeDatabaseFile()
 
@@ -34,6 +33,7 @@ def sync():
     while running:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.connect((dbCentralHostname, tcpPort))
                 # s.sendall(b"Hello, world")
                 res = b""
@@ -51,10 +51,8 @@ def sync():
                 lock.release()
                 print("[sync] urlMap updated!")
         except KeyboardInterrupt:
-            # lock.release()
             exit(1)
         except Exception as e:
-            # lock.release()
             print(e)
         sleepTime = random.randint(30, 50)
         print(f"[sync] Sleeping for {sleepTime} seconds...")
