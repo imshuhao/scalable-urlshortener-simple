@@ -9,9 +9,9 @@ utorid = pwd.getpwuid(os.getuid()).pw_name
 ### === Helper Functions ===
 machine_index = lambda x, y : int.from_bytes(hashlib.md5(x.encode('utf-8')).digest()[0:1], "big") % y
 
-def removeDatabaseFile():
+def removeDatabaseFile(p):
     try:
-        os.remove(dbPath)
+        os.remove(p)
     except FileNotFoundError:
         pass
 
@@ -23,6 +23,7 @@ dbPath = f"/virtual/{utorid}/URLShortner/urlMap.db"
 dbRootPath = f"/virtual/{utorid}/URLShortner/"
 dbCentralHostname = ""
 hosts = []
+ports = []
 
 propertyFile = {}
 
@@ -41,8 +42,6 @@ def readConfig():
             except ValueError:
                 break
             propertyFile[k] = v
-
-    dbPath = propertyFile["SQLite"]
     tcpPort = int(propertyFile["tcpPort"])
     dbCentralHostname = propertyFile["dbCentralHost"]
     hosts.clear()
@@ -52,6 +51,7 @@ def readConfig():
         except KeyError:
             break
         hosts.append(h)
+        ports.append(int(p))
         if h == socket.gethostname():
             serverPort = int(p)
 

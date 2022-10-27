@@ -4,40 +4,45 @@ from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 import threading, socket, time, sqlite3, urllib.parse, json, random, os, sys
 from config import *
 
+
+index_html = ""
+with open("index.html", "r") as f:
+    index_html = f.read()
 lock = threading.Lock()
 urlMap = {}
-running = True
-
+running = threading.Event()
+running.set()
 
 def save():
-    while running:
+    while running.is_set():
         sleepTime = random.randint(10, 20)
         print(f"[save] Sleeping for {sleepTime} seconds...")
         time.sleep(sleepTime)
         try:
-            lock.acquire()
-            items = list(urlMap.items())
-            lock.release()
+            with lock:
+                items = list(urlMap.items())
             con = sqlite3.connect(dbPath)
             cur = con.cursor()
             con.execute('''create table if not exists urlMap (short varchar(50) primary key, long varchar(150) not null);''')
             cur.executemany("INSERT OR IGNORE INTO urlMap(short, long) VALUES(?, ?)", items)
             con.commit()
             con.close()
-            print("[save] Saved to database (urlMap.db).")
+            print(f"[save] Saved to host database with {len(items)} entries.")
+        except KeyboardInterrupt:
+            exit(0)
         except:
-            removeDatabaseFile()
+            removeDatabaseFile(dbPath)
 
 def sync():
     global urlMap
-    while running:
+    while running.is_set():
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.connect((dbCentralHostname, tcpPort))
                 # s.sendall(b"Hello, world")
                 res = b""
-                while running:
+                while running.is_set():
                     data = s.recv(1024000000)
                     if not data:
                         break
@@ -45,10 +50,9 @@ def sync():
                     print(f"[sync] Received {sys.getsizeof(data)} bytes.")
                 entries = json.loads(res.decode('UTF-8'))
                 res = b""
-                lock.acquire()
-                urlMap.clear()
-                urlMap.update(entries)
-                lock.release()
+                with lock:
+                    urlMap.clear()
+                    urlMap.update(entries)
                 print("[sync] urlMap updated!")
         except KeyboardInterrupt:
             exit(1)
@@ -72,7 +76,7 @@ class URLShortner:
                 urlMap[shortR] = longR
             con.close()
         except:
-            removeDatabaseFile()
+            removeDatabaseFile(dbPath)
     
     def serve(self):
         server = ThreadingHTTPServer((self.hostname, self.port), Handler)
@@ -84,23 +88,29 @@ class URLShortner:
         
         server.server_close()
         print("[URLShotner] Server stopped.")
-        global running
-        running = False
+        running.clear()
+        # global running
+        # running = False
         #self.save()
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        global urlMap
+        global urlMap, index_html
         shortURL = self.path[1:]
         if not shortURL:
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
-            with open("index.html", "r") as f:
-                html = f.read()
-                self.wfile.write(str.encode(html))
-                return
+            self.wfile.write(str.encode(index_html))
+            return
+        if shortURL == "givemedata":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(urlMap).encode('utf-8'))
+            return
+
         longURL = urlMap.get(shortURL)
         if longURL:
             self.send_response(307)
@@ -124,9 +134,8 @@ class Handler(BaseHTTPRequestHandler):
         shortURL = data[0].split("=")[1]
         longURL = data[1].split("=")[1]
         if shortURL and longURL:
-            lock.acquire()
-            urlMap[shortURL] = longURL
-            lock.release()
+            with lock:
+                urlMap[shortURL] = longURL
             self.send_response(201)
             self.send_header("Content-type", "text/html")
             self.end_headers()
