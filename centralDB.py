@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import socket, time, json, sqlite3, threading, os
 from config import *
 
@@ -32,6 +34,19 @@ print("[DB] Database loaded.")
 
 partition()
 
+server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+server.settimeout(0.2)
+
+def hb():
+    while True:
+        server.sendto(str.encode(socket.gethostname()+":1\n"), ('<broadcast>', 37021))
+        time.sleep(1.5)
+
+configLoader = threading.Thread(target=hb)
+configLoader.setDaemon(True)
+configLoader.start()
 
 while True:
     stamp = os.stat(propertyFilePath).st_mtime
@@ -46,6 +61,8 @@ while True:
     conn, addr = s.accept()
     with conn:
         clientHost = socket.gethostbyaddr(addr[0])[0].strip().split(".")[0]
+        if clientHost not in hosts:
+            s.close()
         machine = hosts.index(clientHost)
         map2send = allMaps[machine]
         print(f"[send] Connected by {addr}, hostname: {clientHost}")

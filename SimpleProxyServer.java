@@ -63,7 +63,6 @@ public class SimpleProxyServer {
 			Matcher mput = pput.matcher(input);
 			if(mput.matches()){
 				shortResource=mput.group(1);
-        System.out.println(shortResource);
 
       } else {
         Pattern pget = Pattern.compile("^(\\S+)\\s+/(\\S+)\\s+(\\S+)$");
@@ -108,6 +107,7 @@ public class SimpleProxyServer {
 
         final InputStream streamFromClient = client.getInputStream();
         final OutputStream streamToClient = client.getOutputStream();
+        PrintWriter out = new PrintWriter(streamToClient);
 
         Integer hashed=hashRequest(streamFromClient);
         int i=0;

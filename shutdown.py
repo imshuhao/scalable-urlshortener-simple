@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import os,sys
+import os,sys, socket
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -12,7 +12,9 @@ for line in raw:
     prop[k] = v
 
 for k,v in prop.items():
-    if not k.startswith("hostname"):
+    if not k.startswith("hostname") or v == socket.gethostname():
         continue
-    # print(f"ssh dongshu4@{v} 'bash dir_path/run.bash'")
-    os.system(f"ssh {v} 'pkill python'")
+    os.system(f"ssh {v} 'pkill py'")
+
+if socket.gethostname() in prop.values():
+    os.system("pkill py")

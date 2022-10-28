@@ -42,20 +42,20 @@ def sync():
                     if not data:
                         break
                     res += data
-                    print(f"[sync] Received {sys.getsizeof(data)} bytes.")
+                    print(f"[sync] {socket.gethostname()} received {sys.getsizeof(data)} bytes.")
                 entries = json.loads(res.decode('UTF-8'))
                 res = b""
                 lock.acquire()
                 urlMap.clear()
                 urlMap.update(entries)
                 lock.release()
-                print("[sync] urlMap updated!")
+                print(f"[sync] {socket.gethostname()} urlMap updated!")
         except KeyboardInterrupt:
             exit(1)
         except Exception as e:
             print(e)
         sleepTime = random.randint(30, 50)
-        print(f"[sync] Sleeping for {sleepTime} seconds...")
+        print(f"[sync] {socket.gethostname()} sleeping for {sleepTime} seconds...")
         time.sleep(sleepTime)
 
 
@@ -76,7 +76,7 @@ class URLShortner:
     
     def serve(self):
         server = ThreadingHTTPServer((self.hostname, self.port), Handler)
-        print("[URLShotner] Server started http://%s:%s" % (self.hostname, self.port))
+        print("[URLShotner] Server started http://%s:%s" % (socket.gethostname(), self.port))
         try:
             server.serve_forever()
         except KeyboardInterrupt:

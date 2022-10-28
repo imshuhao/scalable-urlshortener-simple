@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import sqlite3, os, pwd, pathlib
 
 dbRootPath = f"/virtual/{pwd.getpwuid(os.getuid()).pw_name}/URLShortner/"

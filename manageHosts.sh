@@ -16,7 +16,7 @@ if [ $mode = "delete" ]; then
 			continue
 		fi
 		if [[ $Line =~ $host ]]; then
-			ssh $host "pkill python3" &
+			ssh $host "pgrep URLShortner.py | xargs -r kill" &
 			sed -i "/hostname$HostNum:$host/d" $File
 			sed -i "/port$HostNum:$PORT/d" $File
 			conteenue=1		# we already deleted the next line, skip the next for loop 
@@ -38,8 +38,12 @@ elif [ $mode = "add" ]; then
 			let HostNum++
 		fi
 	done
-	echo hostname$HostNum:$host >> $File
-	echo port$HostNum:$PORT >> $File
+	if [[ $host =~ "dh20" ]]; then
+		echo hostname$HostNum:$host >> $File
+		echo port$HostNum:$PORT >> $File
+	else
+		echo Unknown Host
+	fi
 else
 	echo WRONG USAGE: Mode can either be add or delete!!!
 fi

@@ -4,7 +4,7 @@ import random, string, subprocess, os
 
 import time
 import curses
-# import socket
+import socket
 import threading
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -12,19 +12,14 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 hosts = []
 proxyHost = None
 proxyPort = None
+db = None
 
-# server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-# server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-# server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-# server.settimeout(0.2)
+client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
+client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+client.settimeout(0.5)
+client.bind(("", 37021))
 
-# client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP
-# client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-# client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-# client.settimeout(0.2)
-# client.bind(("", 37021))
-
-# TODO: revive proxy, terminate proxy on exit
 def monitor(window):
     try:
         while True:
@@ -34,6 +29,19 @@ def monitor(window):
                 p = subprocess.run(["curl", "-s", "-o", "/dev/null", "-X", "GET", "-w", "%{http_code}", request], capture_output=True, text=True)
                 proxyAlive = True if p.stdout == "200" else False
                 statusString += proxyHost + (":1" if proxyAlive else ":0") + " (proxy)" +"\n"
+                if not proxyAlive:
+                    revive_proxy(proxyHost)
+
+            if db:
+                dbAlive = False
+                try:
+                    data, addr = client.recvfrom(1024)
+                    dbAlive = db+":1" in data.decode()
+                except socket.timeout:
+                    pass
+                statusString += db + (":1" if dbAlive else ":0") + " (DB)" +"\n"
+                if not dbAlive:
+                    revive_db(db)
 
             for host, port in hosts:
                 request = host + f":{port}/arnold"
@@ -46,17 +54,14 @@ def monitor(window):
             f = open("status.properties", "w")
             f.write(statusString)
             f.close()
-            render(window, statusString)
-
+            # render(window, statusString)
+            print(statusString)
             time.sleep(2)
-            # try:
-            #     data, addr = client.recvfrom(1024)
-            # except socket.timeout:
-            #     server.sendto(str.encode(statusString), ('<broadcast>', 37021))
+
     except KeyboardInterrupt:
-        os.system("python3 ./shutdown.py")
         if proxyHost:
             os.system(f"ssh {proxyHost} 'pkill java'")
+        os.system("python3 ./shutdown.py")
         exit(1)
 
 def render(window, s):
@@ -65,13 +70,16 @@ def render(window, s):
     window.refresh()
 
 def revive(host):
-    # os.system("pkill java && ./run.bash")
     loadConfig(False)
     if any([host in host_pair for host_pair in hosts]):
-        os.system(f"ssh {host} 'pkill python3; cd {dir_path}; python3 ./PythonImplementation/URLShortner.py' &")
+        os.system(f"ssh {host} 'pgrep URLShortner.py | xargs -r kill; cd {dir_path}; ./URLShortner.py' &")
 
 def revive_proxy(host):
-    os.system(f"ssh {host} 'pkill python3; cd {dir_path}; python3 ./PythonImplementation/URLShortner.py' &")
+    os.system(f"ssh {host} 'pkill java; cd {dir_path}; javac SimpleProxyServer.java; java SimpleProxyServer' &")
+
+def revive_db(host):
+    os.system(f"ssh {host} 'pgrep centralDB.py | xargs -r kill; cd {dir_path}; ./initDB.py; ./centralDB.py' &")
+
 
 
 def loadConfig(fromThread):
@@ -79,6 +87,7 @@ def loadConfig(fromThread):
         global hosts
         global proxyHost
         global proxyPort
+        global db
         prop = {}
         new_hosts = []
         with open("config.properties", "r") as f:
@@ -90,6 +99,7 @@ def loadConfig(fromThread):
 
         proxyHost = prop.get("proxyHost", None)
         proxyPort = prop.get("proxyPort", None)
+        db = prop.get("dbCentralHost", None)
 
         for i in range(100000000000):
             host = prop.get(f"hostname{i}", None)
@@ -111,5 +121,5 @@ def main(window):
     time.sleep(1)
     monitor(window)
 
-curses.wrapper(main)
-# main(1)
+# curses.wrapper(main)
+main(1)
