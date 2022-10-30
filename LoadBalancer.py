@@ -101,13 +101,16 @@ def forward(host, port, conn, addr, data, shortResource):
         sock.connect((host, port))
         sock.send(data)
 
+        res = b''
         while True:
             reply = sock.recv(buffer_size)
             if(len(reply) > 0):
                 conn.send(reply)
-                hot_cache[shortResource] = reply
+                res += reply
             else:
                 break
+        if res:
+            hot_cache[shortResource] = res
         sock.close()
         conn.close()
     except Exception as e:
