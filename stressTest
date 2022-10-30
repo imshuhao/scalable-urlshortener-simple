@@ -1,0 +1,3 @@
+#!/bin/bash
+
+ab -n 4000 -c 8 -g load.tsv http://dh2020pc27:8848/xxx
