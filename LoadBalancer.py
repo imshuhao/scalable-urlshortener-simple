@@ -1,10 +1,6 @@
 #!/usr/bin/python3
 
-from re import T
-import socket
-import sys
-import threading
-import time
+import socket, sys, threading, time, urllib
 from config import *
 
 max_connection = 8
@@ -32,7 +28,6 @@ def monitor_status():
             print("[LB] Property file changed!")
             readConfig()
             syncHosts()
-            # backupHosts()
             _cached_stamp = stamp
         _hosts.clear()
         _ports.clear()
@@ -78,23 +73,30 @@ def redirect(conn, data, addr):
         return
     try:
         first_line = data.split(b'\r\n')[0]
-        shortResource = first_line.split()[1][1:]
-        machine2send = machine_index_bytes(shortResource, len(_hosts))
+        shortResource = urllib.parse.unquote(first_line.decode("utf-8")).split()[1][1:]
+        no_cache = False
+        if '=' in shortResource:
+            shortResource = shortResource.split('&')[0][7:]
+            no_cache = True
+        machine2send = machine_index(shortResource, len(_hosts))
         target_host, target_port = _hosts[machine2send], _ports[machine2send]
-        # print(f"Short: {shortResource}, Target Host: {target_host}:{target_port}")
-        forward(target_host, target_port, conn, addr, first_line + b'\r\n\r\n', shortResource)
+        print(f"Short: {shortResource}, Target Host: {target_host}:{target_port}")
+        forward(target_host, target_port, conn, addr, first_line + b'\r\n\r\n', shortResource, no_cache)
     except Exception as e:
         print(data, _hosts, _ports, hosts, ports)
         print("[LB redirect]", e)
 
-def forward(host, port, conn, addr, data, shortResource):
+def forward(host, port, conn, addr, data, shortResource, no_cache=False):
+    if shortResource == "hb":
+        conn.send(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Type: text/html\r\n\r\nAlive")
+        conn.close()
+        return
     global hot_cache
     if len(hot_cache) > 10000:
         hot_cache.clear()
-    if shortResource in hot_cache:
+    if not no_cache and shortResource in hot_cache:
         conn.send(hot_cache[shortResource])
         conn.close()
-        # print("[LB forward] cache hit")
         return
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -109,7 +111,7 @@ def forward(host, port, conn, addr, data, shortResource):
                 res += reply
             else:
                 break
-        if res:
+        if not no_cache and res:
             hot_cache[shortResource] = res
         sock.close()
         conn.close()

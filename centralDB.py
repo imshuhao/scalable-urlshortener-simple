@@ -97,7 +97,6 @@ def partition():
         print(name, len(allMaps[i]))
     print("========= EOF ========")
 
-# con = sqlite3.connect(dbPath)
 con = sqlite3.connect(centralDatabasePath)
 cur = con.cursor()
 res = cur.execute("SELECT short, long FROM urlMap")

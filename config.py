@@ -9,7 +9,6 @@ utorid = pwd.getpwuid(os.getuid()).pw_name
 
 ### === Helper Functions ===
 machine_index = lambda x, y : int.from_bytes(hashlib.md5(x.encode('utf-8')).digest()[0:1], "big") % y
-machine_index_bytes = lambda x, y : int.from_bytes(hashlib.md5(x).digest()[0:1], "big") % y
 
 def removeDatabaseFile(p):
     try:

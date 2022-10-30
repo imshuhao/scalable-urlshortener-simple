@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
-import threading, socket, time, sqlite3, urllib.parse, json, random, os, sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading, socket, time, sqlite3, urllib.parse, json, random
 from config import *
 
 
@@ -41,14 +41,12 @@ def sync():
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.connect((dbCentralHostname, tcpPort))
-                # s.sendall(b"Hello, world")
                 res = b""
                 while running.is_set():
                     data = s.recv(1024000000)
                     if not data:
                         break
                     res += data
-                    # print(f"[sync] {socket.gethostname()} received {sys.getsizeof(data)} bytes.")
                 if not res:
                     time.sleep(1)
                     continue
