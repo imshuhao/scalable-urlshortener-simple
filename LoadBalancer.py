@@ -78,14 +78,13 @@ def redirect(conn, data, addr):
         return
     try:
         first_line = data.split(b'\r\n')[0]
-        # print(first_line)
         shortResource = first_line.split()[1][1:]
         machine2send = machine_index_bytes(shortResource, len(_hosts))
         target_host, target_port = _hosts[machine2send], _ports[machine2send]
         # print(f"Short: {shortResource}, Target Host: {target_host}:{target_port}")
         forward(target_host, target_port, conn, addr, first_line + b'\r\n\r\n', shortResource)
     except Exception as e:
-        print(_hosts, _ports, hosts, ports)
+        print(data, _hosts, _ports, hosts, ports)
         print("[LB redirect]", e)
 
 def forward(host, port, conn, addr, data, shortResource):
