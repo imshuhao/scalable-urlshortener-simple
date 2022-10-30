@@ -30,7 +30,8 @@ def save():
             print(f"[save] Saved to host database with {len(items)} entries.")
         except KeyboardInterrupt:
             exit(0)
-        except:
+        except Exception as e:
+            print("[save]", e)
             removeDatabaseFile(dbPath)
 
 def sync():
@@ -48,6 +49,9 @@ def sync():
                         break
                     res += data
                     # print(f"[sync] {socket.gethostname()} received {sys.getsizeof(data)} bytes.")
+                if not res:
+                    time.sleep(1)
+                    continue
                 entries = json.loads(res.decode('UTF-8'))
                 res = b""
                 lock.acquire()
@@ -62,7 +66,7 @@ def sync():
         except KeyboardInterrupt:
             exit(1)
         except Exception as e:
-            print(e)
+            print("[sync]", e)
         sleepTime = random.randint(30, 50)
         print(f"[sync] {socket.gethostname()} sleeping for {sleepTime} seconds...")
         time.sleep(sleepTime)

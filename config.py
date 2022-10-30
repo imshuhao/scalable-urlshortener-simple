@@ -9,6 +9,7 @@ utorid = pwd.getpwuid(os.getuid()).pw_name
 
 ### === Helper Functions ===
 machine_index = lambda x, y : int.from_bytes(hashlib.md5(x.encode('utf-8')).digest()[0:1], "big") % y
+machine_index_bytes = lambda x, y : int.from_bytes(hashlib.md5(x).digest()[0:1], "big") % y
 
 def removeDatabaseFile(p):
     try:
@@ -18,7 +19,7 @@ def removeDatabaseFile(p):
 
 
 ### ==== Default Config Variables ===
-serverPort = tcpPort = 0
+serverPort = tcpPort = proxyPort = 0
 dbPath = f"/virtual/{utorid}/URLShortner/urlMap.db"
 dbRootPath = f"/virtual/{utorid}/URLShortner/"
 dbCentralHostname = ""
@@ -42,7 +43,7 @@ def isAlive(host):
 
 ### === Reading Java .properties File ===
 def readConfig():
-    global hosts, dbPath, tcpPort, dbCentralHostname, serverPort
+    global hosts, dbPath, tcpPort, dbCentralHostname, serverPort, proxyPort
     propertyFile.clear()
     with open(propertyFilePath, "r") as f:
         for line in f:
@@ -53,6 +54,7 @@ def readConfig():
             propertyFile[k] = v
     tcpPort = int(propertyFile["tcpPort"])
     dbCentralHostname = propertyFile["dbCentralHost"]
+    proxyPort = int(propertyFile["proxyPort"])
     hosts.clear()
     for i in range(100000):
         try:

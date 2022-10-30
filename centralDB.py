@@ -3,6 +3,16 @@
 import socket, time, json, sqlite3, threading, os, random, urllib.request
 from config import *
 
+
+ip2host = {
+    "142.1.46.60": "dh2020pc26",
+    "142.1.46.61": "dh2020pc27",
+    "142.1.46.62": "dh2020pc28",
+    "142.1.46.63": "dh2020pc29",
+    "142.1.46.64": "dh2020pc30",
+}
+
+
 _cached_stamp = os.stat(propertyFilePath).st_mtime
 centralDatabasePath = dbRootPath + "central.db"
 allMaps = []
@@ -21,7 +31,6 @@ def backupHosts():
     _bak_ports.clear()
     _bak_hosts.extend(hosts)
     _bak_ports.extend(ports)
-
 
 backupHosts()
 
@@ -45,8 +54,8 @@ def save():
             con.close()
             print("[CentralDB save] Saved to database (central.db).")
         except Exception as e:
-            print(e)
             print("[CentralDB save] Save failed! Deleting DB file...")
+            print("[CentralDB save]", e)
             removeDatabaseFile(centralDatabasePath)
 
 
@@ -136,11 +145,14 @@ while True:
             backupHosts()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((socket.gethostname(), tcpPort))
+        s.bind(("0.0.0.0", tcpPort))
         s.listen()
         conn, addr = s.accept()
         with conn:
-            clientHost = socket.gethostbyaddr(addr[0])[0].strip().split(".")[0]
+            print("[addr]", addr)
+            clientHost = ip2host.get(addr[0], '')
+            if not clientHost:
+                clientHost = socket.gethostbyaddr(addr[0])[0].strip().split(".")[0]
             if clientHost not in hosts:
                 s.close()
                 continue
@@ -159,5 +171,4 @@ while True:
         exit(0)
     except Exception as e:
         print(e)
-    # print("[CentralDB] Sleeping for 10 seconds before next send...")
     time.sleep(0.1)

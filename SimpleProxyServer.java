@@ -9,48 +9,16 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class SimpleProxyServer {
-  // static int i = 0;
+  static int i = 0;
   // String[] hosts = {"dh2020pc18:8080", "localhost"};
   static List<String> hosts = new ArrayList<>();
   static List<Integer> ports = new ArrayList<>();
-  static List<String> aliveHosts = new ArrayList<>();
-  // static Map<String, Integer> status = new HashMap<>();
-  static Integer localport=null;
 
   public static void main(String[] args) throws IOException {
-    loadProp();
-
-    Thread t = new Thread() {
-      public void run() {
-        try {
-          while(true) {
-            loadProp();
-            loadStatus();
-            Thread.sleep(5000);
-          }
-        } catch (InterruptedException e) {
-
-        }
-      }
-    };
-
-    // Start the client-to-server request thread running
-    t.start();
-
-    try {
-      // Print a start-up message
-      System.out.println("Starting proxy on port " + localport + " for " + hosts.size() + " hosts"
-          + " on " + ports.size() +  " ports.");  
-      // And start running the server
-      runServer(hosts, ports, localport); // never returns
-    } catch (Exception e) {
-      System.err.println(e);
-    }
-  }
-
-  private static void loadProp() {
     Properties prop = new Properties();
     String configFile = "config.properties";
+    // MessageDigest md = MessageDigest.getInstance("MD5");
+    
     try (FileInputStream fis = new FileInputStream(configFile)) {
         prop.load(fis);
     } catch (FileNotFoundException ex) {
@@ -58,54 +26,34 @@ public class SimpleProxyServer {
     } catch (IOException ex) {
       System.exit(1);
     }
-    
-    localport = Integer.parseInt(prop.getProperty("proxyPort"));
-    List<String> tmpHost = new ArrayList<>();
-    List<Integer> tmpPort = new ArrayList<>();
 
-    for (int k = 0; ; ++k) {
-        String hostname = prop.getProperty("hostname" + k);
-        String port = prop.getProperty("port" + k);
+    for (int i = 0; ; ++i) {
+        String hostname = prop.getProperty("hostname" + i);
+        String port = prop.getProperty("port" + i);
         if (hostname == null || port == null) {
           break;
         }
-        tmpHost.add(hostname);
-        tmpPort.add(Integer.parseInt(port));
+        hosts.add(hostname);
+        ports.add(Integer.parseInt(port));
     }
-    hosts = tmpHost;
-    ports = tmpPort;
-
     System.out.println(hosts);
-  }
-
-  private static void loadStatus() {
-    Properties prop = new Properties();
-    String statusFile = "status.properties";
-    try (FileInputStream fis = new FileInputStream(statusFile)) {
-      prop.load(fis);
-    } catch (FileNotFoundException ex) {
-      System.err.println(ex);
-    } catch (IOException ex) {
-      System.err.println(ex);
-    }
-    List<String> tmp = new ArrayList<>();
-
-    hosts.forEach((host) -> {
-      String hostname = prop.getProperty(host);
-      if(hostname != null && hostname.equals("1")) {
-        tmp.add(host);
-      }
-    });
-    aliveHosts = tmp;
-    System.out.println(aliveHosts);
-  }
-
-  private static Integer hashRequest(InputStream streamFromClient) {
-    String shortResource="arnold"; Integer hashed = null; boolean hb = false;
     try {
-      BufferedReader in = new BufferedReader(new InputStreamReader(streamFromClient));
-      String input = in.readLine();
+      int localport = Integer.parseInt(prop.getProperty("proxyPort"));
+      // Print a start-up message
+      System.out.println("Starting proxy for " + hosts.size() + " hosts"
+          + " on " + ports.size() +  " ports.");
+      // And start running the server
+      runServer(hosts, ports, localport); // never returns
+    } catch (Exception e) {
+      System.err.println(e);
+    }
+  }
 
+  private static Integer hashRequest(String input) {
+    String shortResource="arnold";
+    Integer hashed = null;
+    boolean hb = false;
+    try {
       Pattern pput = Pattern.compile("^PUT\\s+/\\?short=(\\S+)&long=(\\S+)\\s+(\\S+)$");
 			Matcher mput = pput.matcher(input);
 			if(mput.matches()){
@@ -126,13 +74,12 @@ public class SimpleProxyServer {
       MessageDigest md = MessageDigest.getInstance("MD5");
       byte[] dg = md.digest(shortResource.getBytes());
       hashed = Byte.toUnsignedInt(dg[0]);
-    } catch (IOException e) {
-      System.err.println(e);
     } catch (NoSuchAlgorithmException e) {
       System.err.println(e);
     }
     return hb ? -1 : hashed;
   }
+
 
   /**
    * runs a single-threaded proxy server on
@@ -143,94 +90,54 @@ public class SimpleProxyServer {
     // Create a ServerSocket to listen for connections with
     ServerSocket ss = new ServerSocket(localport);
 
-    final byte[] request = new byte[1024];
     byte[] reply = new byte[4096];
 
     while (true) {
       Socket client = null, server = null;
       try {
+        // Wait for a connection on the local port
         client = ss.accept();
 
         final InputStream streamFromClient = client.getInputStream();
         final OutputStream streamToClient = client.getOutputStream();
-        PrintWriter out = new PrintWriter(streamToClient);
 
-        Integer hashed=hashRequest(streamFromClient);
-        int i=0;
+        BufferedReader in = new BufferedReader(new InputStreamReader(streamFromClient));
+        String clientInput = in.readLine();
+        Integer machine2send = hashRequest(clientInput);
+        System.out.println(clientInput + machine2send.toString());
 
-        if (hashed == -1) {
-          out.println("HTTP/1.1 200 OK");
-          out.println("Server: Java HTTP Server/Shortner : 1.0");
-          out.println("Date: " + new Date());
-          out.println(); 
-          out.flush();
-          client.close();
-          continue;
-        } else if (hashed != null) {
-
-          System.out.println(aliveHosts);
-
-          i = (int)(hashed % aliveHosts.size());
-        } else {
-          System.err.println("Unhashed request.");
-        }
-        String host = aliveHosts.get(i);
-        Integer port = ports.get(hosts.indexOf(host));
-        System.out.println("redirecting to " + host + ":" + port);
-
+        i = 0;
+        // i = (int)(Math.random() * hosts.size());
+        String host = hosts.get(i);
+        Integer port = ports.get(i);
+        System.out.println("redirecting to" + host + ":" + port);
+      
         try {
           server = new Socket(host, port);
         } catch (IOException e) {
-          out.print("Proxy server cannot connect to " + host + ":"+ port + ":\n" + 
-          e + "\n");
+          PrintWriter out = new PrintWriter(streamToClient);
+          out.print("Proxy server cannot connect to " + host + ":"+ port + ":\n" + e + "\n");
           out.flush();
           client.close();
           continue;
         }
 
-        // Get server streams.
-        final InputStream streamFromServer = server.getInputStream();
-        final OutputStream streamToServer = server.getOutputStream();
-
-        // a thread to read the client's requests and pass them
-        // to the server. A separate thread for asynchronous.
-        Thread t = new Thread() {
-          public void run() {
-            int bytesRead;
-            try {
-              while ((bytesRead = streamFromClient.read(request)) != -1) {
-                streamToServer.write(request, 0, bytesRead);
-                streamToServer.flush();
-              }
-            } catch (IOException e) {
-            }
-
-            // the client closed the connection to us, so close our
-            // connection to the server.
-            try {
-              streamToServer.close();
-            } catch (IOException e) {
-            }
-          }
-        };
-
-        // Start the client-to-server request thread running
+        Thread t = new Thread(new ThreadWorker(clientInput, server));
         t.start();
 
-        // Read the server's responses
-        // and pass them back to the client.
         int bytesRead;
+        System.out.println("here");
         try {
-          while ((bytesRead = streamFromServer.read(reply)) != -1) {
-            streamToClient.write(reply, 0, bytesRead);
-            streamToClient.flush();
+          while ((bytesRead = server.getInputStream().read(reply)) != -1) {
+            client.getOutputStream().write(reply, 0, bytesRead);
+            client.getOutputStream().flush();
           }
         } catch (IOException e) {
         }
 
         // The server closed its connection to us, so we close our
         // connection to our client.
-        streamToClient.close();
+        client.getOutputStream().close();
       } catch (IOException e) {
         System.err.println(e);
       } finally {
@@ -245,3 +152,31 @@ public class SimpleProxyServer {
     }
   }
 }
+
+
+class ThreadWorker implements Runnable {
+  private String clientInput;
+  private Socket server;
+  ThreadWorker(String clientInput, Socket server) {
+      this.clientInput = clientInput;
+      this.server = server;
+  }
+
+  @Override
+  public void run() {
+    try {
+      System.out.println("sending to URLShortner");
+      byte[] byteString = this.clientInput.getBytes("UTF-8");
+      this.server.getOutputStream().write(byteString, 0, byteString.length);
+      this.server.getOutputStream().flush();
+      System.out.println("done.");
+    } catch (IOException e) {
+      System.out.println(e);
+    }
+    // catch (UnsupportedEncodingException e) {}
+  }
+}
+
+
+
+
