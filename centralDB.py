@@ -93,37 +93,16 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 server.settimeout(0.2)
 
-def hb():
+def heartbeat():
     while True:
         server.sendto(str.encode(socket.gethostname()+":1\n"), ('<broadcast>', 37021))
         time.sleep(1.5)
 
-configLoader = threading.Thread(target=hb)
+configLoader = threading.Thread(target=heartbeat)
 configLoader.setDaemon(True)
 configLoader.start()
 
 while True:
-    stamp = os.stat(propertyFilePath).st_mtime
-    if (stamp != _cached_stamp):
-        print("[config] Property file changed!")
-        readConfig()
-        partition()
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((socket.gethostname(), tcpPort))
-    s.listen()
-    conn, addr = s.accept()
-    with conn:
-        clientHost = socket.gethostbyaddr(addr[0])[0].strip().split(".")[0]
-        if clientHost not in hosts:
-            s.close()
-        machine = hosts.index(clientHost)
-        map2send = allMaps[machine]
-        print(f"[send] Connected by {addr}, hostname: {clientHost}")
-        conn.sendall(json.dumps(map2send).encode('utf-8'))
-        print("[send] sent")
-    s.close()
-    print("[send] Sleeping...")
     try:
         stamp = os.stat(propertyFilePath).st_mtime
         if (stamp != _cached_stamp):
@@ -137,6 +116,9 @@ while True:
         conn, addr = s.accept()
         with conn:
             clientHost = socket.gethostbyaddr(addr[0])[0].strip().split(".")[0]
+            if clientHost not in hosts:
+                s.close()
+                continue
             machine = hosts.index(clientHost)
             map2send = allMaps[machine]
             print(f"[CentralDB] Connected by {addr}, hostname: {clientHost}")
@@ -145,12 +127,12 @@ while True:
         s.close()
     except KeyboardInterrupt:
         try:
+            running.clear()
             s.close()
         except:
             pass
-        running.clear()
         exit(0)
     except Exception as e:
         print(e)
-    print("[CentralDB] Sleeping for 10 seconds before next send...")
-    time.sleep(10)
+    # print("[CentralDB] Sleeping for 10 seconds before next send...")
+    time.sleep(0.1)
