@@ -55,6 +55,7 @@ def monitor(window):
             f.write(statusString)
             f.close()
             # render(window, statusString)
+            os.system("clear")
             print(statusString)
             time.sleep(2)
 

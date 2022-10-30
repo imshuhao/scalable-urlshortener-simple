@@ -47,14 +47,14 @@ def sync():
                     if not data:
                         break
                     res += data
-                    print(f"[sync] {socket.gethostname()} received {sys.getsizeof(data)} bytes.")
+                    # print(f"[sync] {socket.gethostname()} received {sys.getsizeof(data)} bytes.")
                 entries = json.loads(res.decode('UTF-8'))
                 res = b""
                 lock.acquire()
                 urlMap.clear()
                 urlMap.update(entries)
                 lock.release()
-                print(f"[sync] {socket.gethostname()} urlMap updated!")
+                print(f"[sync] {socket.gethostname()} urlMap updated with {len(urlMap)} entries!")
                 with lock:
                     urlMap.clear()
                     urlMap.update(entries)
@@ -94,9 +94,6 @@ class URLShortner:
         server.server_close()
         print("[URLShotner] Server stopped.")
         running.clear()
-        # global running
-        # running = False
-        #self.save()
 
 
 class Handler(BaseHTTPRequestHandler):

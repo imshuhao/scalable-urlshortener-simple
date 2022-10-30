@@ -13,6 +13,17 @@ lock = threading.Lock()
 running = threading.Event()
 running.set()
 
+_bak_hosts, _bak_ports = [], []
+
+def backupHosts():
+    global hosts, ports, _bak_hosts, _bak_ports
+    _bak_hosts.clear()
+    _bak_ports.clear()
+    _bak_hosts.extend(hosts)
+    _bak_ports.extend(ports)
+
+
+backupHosts()
 
 def save():
     global databaseContent
@@ -104,11 +115,25 @@ configLoader.start()
 
 while True:
     try:
+        _tmp_hosts, _tmp_ports = [], []
+        for i in range(len(_bak_hosts)):
+            if isAlive(_bak_hosts[i]):
+                _tmp_hosts.append(_bak_hosts[i])
+                _tmp_ports.append(_bak_hosts[i])
+        if len(_tmp_hosts) != len(hosts):
+            hosts.clear()
+            ports.clear()
+            hosts.extend(_tmp_hosts)
+            ports.extend(_tmp_ports)
+            print("[CentealDB] Alive hosts updated, re-partitioning...")
+            partition()
+
         stamp = os.stat(propertyFilePath).st_mtime
         if (stamp != _cached_stamp):
             print("[CentralDB] Property file changed!")
             readConfig()
             partition()
+            backupHosts()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((socket.gethostname(), tcpPort))

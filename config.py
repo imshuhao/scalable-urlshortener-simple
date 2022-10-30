@@ -1,6 +1,7 @@
 import os, hashlib, socket, pwd, pathlib
 
 propertyFilePath = "config.properties"
+statusFilePath = "status.properties"
 cached_stamp = 0
 utorid = pwd.getpwuid(os.getuid()).pw_name
 
@@ -17,19 +18,27 @@ def removeDatabaseFile(p):
 
 
 ### ==== Default Config Variables ===
-serverPort = 0
-tcpPort = 0
+serverPort = tcpPort = 0
 dbPath = f"/virtual/{utorid}/URLShortner/urlMap.db"
 dbRootPath = f"/virtual/{utorid}/URLShortner/"
 dbCentralHostname = ""
-hosts = []
-ports = []
+hosts, ports = [], []
 
 propertyFile = {}
 
 
 pathlib.Path(dbRootPath).mkdir(parents=True, exist_ok=True)
 
+
+def isAlive(host):
+    try:
+        with open(statusFilePath, 'r') as f:
+            for line in f:
+                line = line.strip().split(":")
+                if line[0] == host:
+                    return False if line[1].startswith('0') else True
+    except FileNotFoundError:
+        return True
 
 ### === Reading Java .properties File ===
 def readConfig():
