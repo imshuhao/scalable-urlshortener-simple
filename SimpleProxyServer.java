@@ -13,10 +13,30 @@ public class SimpleProxyServer {
   // String[] hosts = {"dh2020pc18:8080", "localhost"};
   static List<String> hosts = new ArrayList<>();
   static List<Integer> ports = new ArrayList<>();
+  static List<String> aliveHosts = new ArrayList<>();
+  // static Map<String, Integer> status = new HashMap<>();
   static Integer localport=null;
 
   public static void main(String[] args) throws IOException {
     loadProp();
+
+    Thread t = new Thread() {
+      public void run() {
+        try {
+          while(true) {
+            loadProp();
+            loadStatus();
+            Thread.sleep(5000);
+          }
+        } catch (InterruptedException e) {
+
+        }
+      }
+    };
+
+    // Start the client-to-server request thread running
+    t.start();
+
     try {
       // Print a start-up message
       System.out.println("Starting proxy on port " + localport + " for " + hosts.size() + " hosts"
@@ -40,6 +60,8 @@ public class SimpleProxyServer {
     }
     
     localport = Integer.parseInt(prop.getProperty("proxyPort"));
+    List<String> tmpHost = new ArrayList<>();
+    List<Integer> tmpPort = new ArrayList<>();
 
     for (int k = 0; ; ++k) {
         String hostname = prop.getProperty("hostname" + k);
@@ -47,10 +69,35 @@ public class SimpleProxyServer {
         if (hostname == null || port == null) {
           break;
         }
-        hosts.add(hostname);
-        ports.add(Integer.parseInt(port));
+        tmpHost.add(hostname);
+        tmpPort.add(Integer.parseInt(port));
     }
+    hosts = tmpHost;
+    ports = tmpPort;
+
     System.out.println(hosts);
+  }
+
+  private static void loadStatus() {
+    Properties prop = new Properties();
+    String statusFile = "status.properties";
+    try (FileInputStream fis = new FileInputStream(statusFile)) {
+      prop.load(fis);
+    } catch (FileNotFoundException ex) {
+      System.err.println(ex);
+    } catch (IOException ex) {
+      System.err.println(ex);
+    }
+    List<String> tmp = new ArrayList<>();
+
+    hosts.forEach((host) -> {
+      String hostname = prop.getProperty(host);
+      if(hostname != null && hostname.equals("1")) {
+        tmp.add(host);
+      }
+    });
+    aliveHosts = tmp;
+    System.out.println(aliveHosts);
   }
 
   private static Integer hashRequest(InputStream streamFromClient) {
@@ -79,7 +126,6 @@ public class SimpleProxyServer {
       MessageDigest md = MessageDigest.getInstance("MD5");
       byte[] dg = md.digest(shortResource.getBytes());
       hashed = Byte.toUnsignedInt(dg[0]);
-      hashed = 0;
     } catch (IOException e) {
       System.err.println(e);
     } catch (NoSuchAlgorithmException e) {
@@ -121,12 +167,15 @@ public class SimpleProxyServer {
           client.close();
           continue;
         } else if (hashed != null) {
-          i = (int)(hashed % hosts.size());
+
+          System.out.println(aliveHosts);
+
+          i = (int)(hashed % aliveHosts.size());
         } else {
           System.err.println("Unhashed request.");
         }
-        String host = hosts.get(i);
-        Integer port = ports.get(i);
+        String host = aliveHosts.get(i);
+        Integer port = ports.get(hosts.indexOf(host));
         System.out.println("redirecting to " + host + ":" + port);
 
         try {
