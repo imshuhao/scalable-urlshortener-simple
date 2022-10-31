@@ -54,8 +54,7 @@ def monitor(window):
             f = open("status.properties", "w")
             f.write(statusString)
             f.close()
-            # render(window, statusString)
-            # os.system("clear")
+            os.system("clear")
             print(statusString)
             time.sleep(2)
 
@@ -122,5 +121,4 @@ def main(window):
     time.sleep(1)
     monitor(window)
 
-# curses.wrapper(main)
 main(1)

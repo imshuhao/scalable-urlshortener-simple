@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import os,sys, socket
+import os, socket
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
