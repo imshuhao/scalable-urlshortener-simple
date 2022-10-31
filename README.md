@@ -84,10 +84,15 @@
 - [0] 1 Graph showing performance of system under load1
 
 - [0] 1 Analysis of system performance under load1
+	All requests finish quickly in around 1ms under load of 10000 requests of 8 concurrency level, 
+	with a few outliers going beyond 4ms.
 
 - [0] 1 Graph showing performance of system under load2
 
 - [0] 1 Analysis of system performance under load2
+	Most requests finish in less than 3 ms, under load of 50000 requests of 8 concurrency level.
+	However, the last 10% requests take longer to complete as the server gets loaded and
+	wait time increases.
 
 ### 0/4 Discussing the system's scalability
 
@@ -111,3 +116,20 @@
 
 ### 0/2 Discussion of the tools used during testing. Listing them is not enough.
 You must define each tool used, and how you used it
+- apache bench
+	- ab -n 4000 -c 8 -g load.tsv http://dh2020pc29:8086/00000000000000000000000000000000000000
+		- -n to define number of requests.
+		- -c to define number of concurrent requests.
+		- -g output to load.tsv
+		- url to test
+	- Output file
+		- Start time: human readable time at the time of request
+		- seconds: unix seconds since epoch
+		- ctime: connection time in ms, time taken to fully establish connection
+		- dtime: process time in ms, time taken to finish processing request
+		- ttime: total time in ms, ctime+dtime
+		- wait: waited time, time process waited to receive data after connection
+	- Result:
+		- 50000 requests with ab took 8 seconds with 8 concurrency level
+		- most requests took less than 3 ms to complete, with 100% percentile being 6 ms
+		- 6471 read / sec
