@@ -3,8 +3,7 @@ import random, string, subprocess, time
 
 def run(num):
     for i in range(num):
-        request=f"http://localhost:8080/000000000000000000000000000000000000000000000"
-        # print(request)
+        request=f"http://dh2010pc29:8086/{''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(20))}"
         subprocess.call(["curl", "-X", "GET", request], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

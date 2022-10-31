@@ -80,7 +80,7 @@ def redirect(conn, data, addr):
             no_cache = True
         machine2send = machine_index(shortResource, len(_hosts))
         target_host, target_port = _hosts[machine2send], _ports[machine2send]
-        print(f"Short: {shortResource}, Target Host: {target_host}:{target_port}")
+        # print(f"Short: {shortResource}, Target Host: {target_host}:{target_port}")
         forward(target_host, target_port, conn, addr, first_line + b'\r\n\r\n', shortResource, no_cache)
     except Exception as e:
         print(data, _hosts, _ports, hosts, ports)

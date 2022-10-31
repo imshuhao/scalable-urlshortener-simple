@@ -27,7 +27,7 @@ def monitor(window):
             if proxyHost and proxyPort:
                 request = proxyHost + f":{proxyPort}/hb"
                 p = subprocess.run(["curl", "-s", "-o", "/dev/null", "-X", "GET", "-w", "%{http_code}", request], capture_output=True, text=True)
-                proxyAlive = True if p.stdout == "200" else False
+                proxyAlive = True if p.stdout != "000" else False
                 statusString += proxyHost + (":1" if proxyAlive else ":0") + " (proxy)" +"\n"
                 if not proxyAlive:
                     revive_proxy(proxyHost)
@@ -55,13 +55,13 @@ def monitor(window):
             f.write(statusString)
             f.close()
             # render(window, statusString)
-            os.system("clear")
+            # os.system("clear")
             print(statusString)
             time.sleep(2)
 
     except KeyboardInterrupt:
         if proxyHost:
-            os.system(f"ssh {proxyHost} 'pkill java'")
+            os.system(f"ssh {proxyHost} 'pgrep LoadBalancer.py | xargs -r kill'")
         os.system("python3 ./shutdown.py")
         exit(1)
 
@@ -76,7 +76,7 @@ def revive(host):
         os.system(f"ssh {host} 'pgrep URLShortner.py | xargs -r kill; cd {dir_path}; ./URLShortner.py' &")
 
 def revive_proxy(host):
-    os.system(f"ssh {host} 'pkill java; cd {dir_path}; javac SimpleProxyServer.java; java SimpleProxyServer' &")
+    os.system(f"ssh {host} 'pgrep LoadBalancer.py | xargs -r kill; cd {dir_path}; ./LoadBalancer.py' &")
 
 def revive_db(host):
     os.system(f"ssh {host} 'pgrep centralDB.py | xargs -r kill; cd {dir_path}; ./initDB.py; ./centralDB.py' &")
