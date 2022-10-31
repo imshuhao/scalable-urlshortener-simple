@@ -1,8 +1,16 @@
 # CSC409A1 Report
 ### 0/3 Diagram showing
 - [0] 1 Application system
+
+![Application system](https://s2.loli.net/2022/11/01/Otzamd1fJNnHSBP.jpg)
+
 - [0] 1 Monitoring system
+
+![Application system](https://s2.loli.net/2022/11/01/nzNXUL5F7otwIT4.jpg)
+
 - [0] 1 Data flow
+
+![Application system](https://s2.loli.net/2022/11/01/twzShrolxaMbI7A.jpg)
 
 ### 0/14 Discussion of each of the following with respect to your system.
 - For each point, as appropriate, show an appropriate diagram, list performance guarantees, discuss code/architecture choices.
@@ -31,6 +39,9 @@
 	- Data will be MD5 hashed and the first 2 bytes will be converted
 	into integer. Distribution among alive hosts will be determined 
 	by modding the result integer with number of host alive.
+
+	![partition.jpeg](https://s2.loli.net/2022/11/01/tn2wGsWoIYdUheA.jpg)
+	
 - [0] 1 Data replication
 	- Central DB will have a replica of the collective data set, and 
 	will be updated periodically if a host received new data.
@@ -83,11 +94,15 @@
 
 - [0] 1 Graph showing performance of system under load1
 
+![loadTimeSeries10k.jpg](https://s2.loli.net/2022/11/01/5sXe8YpStTjyRAZ.jpg)
+
 - [0] 1 Analysis of system performance under load1
 	All requests finish quickly in around 1ms under load of 10000 requests of 8 concurrency level, 
 	with a few outliers going beyond 4ms.
 
 - [0] 1 Graph showing performance of system under load2
+
+![loadTimeSeries50k.jpg](https://s2.loli.net/2022/11/01/S45DP1rnbXmtg3B.jpg)
 
 - [0] 1 Analysis of system performance under load2
 	Most requests finish in less than 3 ms, under load of 50000 requests of 8 concurrency level.
